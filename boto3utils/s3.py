@@ -113,14 +113,18 @@ class s3(object):
         filename = op.join(tmpdir, 'catalog.json')
         _extra = {'ContentType': 'application/json'}
         _extra.update(extra)
+        error = None
         with open(filename, 'w') as f:
             f.write(json.dumps(data))
         try:
             self.upload(filename, url, extra=_extra, **kwargs)
         except Exception as err:
             logger.error(err)
+            error = err
         finally:
             rmtree(tmpdir)
+        if error:
+            raise error
 
     def get_object(self, bucket, key, extra_args={}):
         """ Get an S3 object """

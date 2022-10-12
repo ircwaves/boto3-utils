@@ -2,6 +2,8 @@ import boto3
 import os
 import pytest
 
+import tempfile
+
 from boto3utils import s3
 from shutil import rmtree
 
@@ -109,6 +111,26 @@ def test_upload_download(s3mock):
     assert (os.path.exists(fname))
     assert (os.path.join(path, os.path.basename(url)) == fname)
     rmtree(path)
+
+
+@pytest.mark.parametrize("bucket", [BUCKET, f"{BUCKET}_bad_bucket_that_should_never_exist"])
+def test_upload_json(monkeypatch, s3mock, bucket):
+    """upload failure should generate exception"""
+    url = "s3://%s/mytestfile" % bucket
+    temp_path = os.path.join(testpath, "test_s3/test_upload_json_failure")
+
+    def fake_mkdtemp(d=temp_path):
+        os.makedirs(d)
+        return d
+
+    monkeypatch.setattr(tempfile, "mkdtemp", fake_mkdtemp)
+    assert not os.path.exists(temp_path)
+    try:
+        s3().upload_json({"test": "banana"}, url)
+        assert bucket == BUCKET  # This should only work when bucket is BUCKET.
+    except Exception:
+        assert bucket != BUCKET
+    assert not os.path.exists(temp_path)
 
 
 def test_upload_getobject(s3mock):
